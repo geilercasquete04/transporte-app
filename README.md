@@ -1,29 +1,31 @@
-# Welcome to your Expo app 👋
+# Transporte APP
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Integrantes**
+- Geiler Casquete Bustos
+- Javier Mauricio Medina
+- Beyker Selena Cabezas
 
-## Get started
+---
 
-1. Install dependencies
+## Descripción
 
+`transporte-app` es una aplicación desarrollada con Expo y React Native/React (TypeScript), ideal para gestionar funcionalidades relacionadas con el transporte. Fue creada utilizando `create-expo-app`, con estructura basada en rutas de archivos (file-based routing) y un sistema para reiniciar el proyecto moviendo el código base (starter code) a `app-example`, generando un directorio limpio listo para comenzar a desarrollar.
+
+---
+
+## Get Started
+
+1. **Clona el repositorio**  
    ```bash
+   git clone https://github.com/geilercasquete04/transporte-app.git
+   cd transporte-app
+
+2. **Install dependencies**
    npm install
-   ```
-
-2. Start the app
-
-   ```bash
+   
+3. **Start the app**
    npx expo start
-   ```
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
 ## Get a fresh project
 
@@ -33,7 +35,27 @@ When you're ready, run:
 npm run reset-project
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Pros de usar React (y/o React Native con Expo) para este proyecto
+
+**Productividad y desarrollo rápido**
+   Gracias a Expo y el framework de React Native, puedes iterar rápidamente y ver los cambios al instante en dispositivos físicos o simuladores.
+
+**Multiplataforma unificada**
+   Con una base de código en JavaScript/TypeScript, puedes desplegar en Android, iOS e incluso web con un esfuerzo significativamente menor al comparado con desarrollos nativos separados.
+
+**Amplia comunidad y ecosistema**
+   React y Expo cuentan con una comunidad activa, documentación extensa y una gran variedad de librerías útiles, lo que facilita resolver problemas y añadir funcionalidades avanzadas.
+
+## Contras o desafíos potenciales de usar React (Native/Expo) en este contexto
+
+**Rendimiento en escenarios muy exigentes**
+   Para funcionalidades que requieran procesamiento intensivo o animaciones complejas, React Native puede ser menos eficiente que soluciones nativas puras.
+
+**Limitaciones frente a funcionalidades nativas específicas**
+   Aunque Expo simplifica mucho, algunas APIs nativas muy específicas podrían no estar disponibles o exigir ejectuar código nativo adicional (e.g., módulos nativos o configuración manual).
+
+**Tamaño del bundle y dependencias**
+   Las aplicaciones construidas con Expo, al incluir librerías adicionales por defecto, pueden generar paquetes más pesados si no se optimiza bien el árbol de dependencias o si no se realiza un proceso de eject cuando se necesita personalización.
 
 ## Learn more
 
