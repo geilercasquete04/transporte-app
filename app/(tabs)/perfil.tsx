@@ -1,12 +1,15 @@
-import { View, Text, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
+import { ThemedText } from "../../components/ThemedText";
+import { ThemedView } from "../../components/ThemedView";
 
 export default function Perfil() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>Perfil</Text>
-	       <Text style={styles.titulo}> </Text>
-      <Text style={styles.texto}>Aquí va la información del usuario  </Text>
-    </View>
+    <ThemedView style={styles.container}>
+      <ThemedText type="title" style={styles.titulo}>Perfil</ThemedText>
+      <ThemedText style={styles.texto}>
+        Aquí va la información del usuario
+      </ThemedText>
+    </ThemedView>
   );
 }
 
@@ -15,15 +18,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    padding: 20,
   },
   titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
+    marginBottom: 20,
   },
   texto: {
     fontSize: 16,
-    color: "#000",
+    textAlign: "center",
   },
 });

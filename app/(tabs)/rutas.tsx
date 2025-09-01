@@ -1,12 +1,15 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { StyleSheet } from 'react-native';
 
 export default function Rutas() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>Rutas</Text>
-	        <Text style={styles.titulo}> </Text>
-      <Text>Aquí las personas verán los recorridos del camión</Text>
-    </View>
+    <ThemedView style={styles.container}>
+      <ThemedText type="title" style={styles.titulo}>Rutas</ThemedText>
+      <ThemedText style={styles.texto}>
+        Aquí las personas verán los recorridos del camión
+      </ThemedText>
+    </ThemedView>
   );
 }
 
@@ -15,15 +18,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    padding: 20,
   },
   titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
+    marginBottom: 20,
   },
   texto: {
     fontSize: 16,
-    color: "#000",
+    textAlign: "center",
   },
 });
