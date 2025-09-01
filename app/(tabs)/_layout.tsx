@@ -1,16 +1,25 @@
-import { Tabs } from "expo-router";
-import { View, Text } from "react-native";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import { ThemeProvider, useTheme } from "../../contexts/ThemeContexts";
 
-export default function TabLayout() {
+function TabsContent() {
+  const { isDarkMode } = useTheme();
+  const colors = isDarkMode ? Colors.dark : Colors.light;
+
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: "#fff" },
-        headerTintColor: "#000", 
-        tabBarStyle: { backgroundColor: "#fff" }, 
-        tabBarActiveTintColor: "#000", 
-        tabBarInactiveTintColor: "gray", 
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.text,
+        headerRight: () => <ThemeToggle />,
+        tabBarStyle: { 
+          backgroundColor: colors.background,
+          borderTopColor: colors.border,
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.tabIconDefault,
       }}
     >
       <Tabs.Screen
@@ -41,5 +50,13 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+  );
+}
+
+export default function TabLayout() {
+  return (
+    <ThemeProvider>
+      <TabsContent />
+    </ThemeProvider>
   );
 }
