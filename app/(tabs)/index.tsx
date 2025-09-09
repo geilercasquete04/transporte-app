@@ -1,16 +1,12 @@
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { StyleSheet } from "react-native";
+import { SafeAreaView, StatusBar, StyleSheet } from "react-native";
+import MapComponent from "../../components/MapComponent";
 
 export default function Index() {
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.titulo}>Inicio</ThemedText>
-      <ThemedText style={styles.texto}>Bienvenido (a)</ThemedText>
-      <ThemedText style={styles.texto}>
-        En esta App podrás ver el recorrido del camión de la basura
-      </ThemedText>
-    </ThemedView>
+    <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#2E86AB" />
+      <MapComponent />
+    </SafeAreaView>
   );
 }
 

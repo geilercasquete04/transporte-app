@@ -1,8 +1,8 @@
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { ThemeProvider, useTheme } from "../../contexts/ThemeContexts";
+import { Colors } from "../..//constants/Colors";
+import { ThemeToggle } from "../../components/ThemeToggle";
+import { ThemeProvider, useTheme } from "../../contexts/ThemeContext";
 
 function TabsContent() {
   const { isDarkMode } = useTheme();
