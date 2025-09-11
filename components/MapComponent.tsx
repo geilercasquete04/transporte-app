@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -22,18 +22,33 @@ const MapComponent: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [watching, setWatching] = useState<boolean>(false);
-  const [watchSubscription, setWatchSubscription] = useState<Location.LocationSubscription | null>(null);
+  
+  // ✅ USAMOS useRef para manejar la suscripción de forma más segura
+  const watchSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
 
   // Obtener permisos y ubicación inicial
   useEffect(() => {
     getCurrentLocation();
+    
+    // Cleanup al desmontar el componente
     return () => {
-      // Limpiar suscripción al desmontar
-      if (watchSubscription) {
-        watchSubscription.remove();
-      }
+      cleanupLocationWatching();
     };
   }, []);
+
+  // ✅ FUNCIÓN DE LIMPIEZA CENTRALIZADA
+  const cleanupLocationWatching = () => {
+    if (watchSubscriptionRef.current) {
+      try {
+        watchSubscriptionRef.current.remove();
+        console.log('Suscripción removida en cleanup');
+      } catch (error) {
+        console.log('Error en cleanup, pero continuando:', error);
+      } finally {
+        watchSubscriptionRef.current = null;
+      }
+    }
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -71,39 +86,49 @@ const MapComponent: React.FC = () => {
     }
   };
 
-  // Iniciar seguimiento en tiempo real
+  // ✅ FUNCIÓN MEJORADA - Iniciar seguimiento
   const startWatching = async () => {
     try {
+      // Primero limpiamos cualquier suscripción existente
+      cleanupLocationWatching();
+      
       setWatching(true);
+      console.log('Iniciando seguimiento de ubicación...');
+      
       const subscription = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 5000, // Actualizar cada 5 segundos
-          distanceInterval: 10, // O cuando se mueva 10 metros
+          accuracy: Location.Accuracy.Balanced, // Cambiado a Balanced para mejor rendimiento
+          timeInterval: 3000, // Cada 3 segundos
+          distanceInterval: 5, // Cada 5 metros
         },
         (newLocation) => {
+          console.log('📍 Nueva ubicación:', newLocation.coords);
           setLocation(newLocation);
-          console.log('Ubicación actualizada:', newLocation.coords);
         }
       );
-      setWatchSubscription(subscription);
+      
+      watchSubscriptionRef.current = subscription;
+      console.log('✅ Seguimiento iniciado correctamente');
+      
     } catch (error) {
-      console.error('Error iniciando seguimiento:', error);
+      console.error('❌ Error iniciando seguimiento:', error);
       setWatching(false);
-      Alert.alert('Error', 'No se pudo iniciar el seguimiento de ubicación');
+      Alert.alert(
+        'Error', 
+        'No se pudo iniciar el seguimiento. Verifica los permisos de ubicación.'
+      );
     }
   };
 
-  // Detener seguimiento
+  // ✅ FUNCIÓN MEJORADA - Detener seguimiento
   const stopWatching = () => {
-    if (watchSubscription) {
-      watchSubscription.remove();
-      setWatchSubscription(null);
-    }
+    console.log('Deteniendo seguimiento...');
+    cleanupLocationWatching();
     setWatching(false);
+    console.log('🛑 Seguimiento detenido');
   };
 
-  // Generar HTML del mapa con Leaflet - Solo ubicación del usuario
+  // Generar HTML del mapa con Leaflet
   const generateMapHTML = () => {
     const userLat = location?.coords.latitude || BUENAVENTURA_COORDS.latitude;
     const userLng = location?.coords.longitude || BUENAVENTURA_COORDS.longitude;
@@ -132,53 +157,50 @@ const MapComponent: React.FC = () => {
         }
         @keyframes pulse { 
           0% { transform: scale(1); } 
-          50% { transform: scale(1.2); } 
+          50% { transform: scale(1.1); } 
           100% { transform: scale(1); } 
         }
+        .watching { animation: pulse 1.5s infinite; }
       </style>
     </head>
     <body>
       <div id="map"></div>
       <script>
-        // Inicializar mapa centrado en MI ubicación únicamente
         var map = L.map('map').setView([${userLat}, ${userLng}], 16);
         
-        // Capa de tiles de OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           maxZoom: 19
         }).addTo(map);
         
         ${hasUserLocation ? `
-        // SOLO crear icono para MI ubicación
         var userIcon = L.divIcon({
-          html: '<div style="background-color: #E74C3C; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 14px; animation: pulse 2s infinite;">📍</div>',
+          html: '<div style="background-color: ${watching ? '#27ae60' : '#E74C3C'}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);" class="${watching ? 'watching' : ''}"></div>',
           className: 'custom-icon',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
         });
         
-        // SOLO marcador de MI ubicación
         L.marker([${userLat}, ${userLng}], {icon: userIcon})
           .addTo(map)
           .bindPopup(\`
-            <div style="text-align: center; padding: 10px; min-width: 200px;">
-              <h3 style="margin: 0 0 10px 0; color: #E74C3C; font-size: 16px;">📍 Tu Ubicación</h3>
-              <p style="margin: 5px 0; font-size: 12px; color: #666; font-family: monospace;">
-                Lat: ${userLat.toFixed(6)}<br>
-                Lng: ${userLng.toFixed(6)}
+            <div style="text-align: center; padding: 8px; min-width: 180px;">
+              <h3 style="margin: 0 0 8px 0; color: ${watching ? '#27ae60' : '#E74C3C'}; font-size: 14px;">
+                📍 ${watching ? 'Siguiendo...' : 'Mi Ubicación'}
+              </h3>
+              <p style="margin: 4px 0; font-size: 11px; color: #666; font-family: monospace;">
+                ${userLat.toFixed(6)}, ${userLng.toFixed(6)}
               </p>
-              <p style="margin: 5px 0; font-size: 11px; color: #888;">
-                Precisión: ±${location?.coords.accuracy?.toFixed(0) || 'N/A'} metros
+              <p style="margin: 4px 0; font-size: 10px; color: #888;">
+                ±${location?.coords.accuracy?.toFixed(0) || '??'} metros
               </p>
             </div>
           \`)
           .openPopup();
         ` : `
-        // Mostrar mensaje si no hay ubicación
         L.popup()
           .setLatLng([${userLat}, ${userLng}])
-          .setContent('<div style="text-align: center; padding: 10px;"><p>🔍 Buscando tu ubicación...</p></div>')
+          .setContent('<div style="text-align: center; padding: 10px;"><p>🔍 Buscando ubicación...</p></div>')
           .openOn(map);
         `}
       </script>
@@ -201,7 +223,7 @@ const MapComponent: React.FC = () => {
         )}
         
         {errorMsg && (
-          <Text style={styles.errorText}>❌ {errorMsg}</Text>
+          <Text style={styles.errorText}>⚠️ {errorMsg}</Text>
         )}
         
         {location && (
@@ -212,28 +234,37 @@ const MapComponent: React.FC = () => {
             <Text style={styles.accuracyText}>
               🎯 Precisión: ±{location.coords.accuracy?.toFixed(0) || 'N/A'} metros
             </Text>
+            {watching && (
+              <Text style={styles.watchingText}>
+                🟢 Siguiendo en tiempo real
+              </Text>
+            )}
           </View>
         )}
         
         {/* Botones de control */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
-            style={styles.button} 
+            style={[styles.button, loading && styles.disabledButton]} 
             onPress={getCurrentLocation}
             disabled={loading}
           >
             <Text style={styles.buttonText}>
-              {loading ? '⏳' : '🎯'} Actualizar
+              {loading ? 'Cargando...' : 'Actualizar'}
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.button, watching ? styles.activeButton : null]} 
+            style={[
+              styles.button, 
+              watching ? styles.stopButton : styles.startButton,
+              loading && styles.disabledButton
+            ]} 
             onPress={watching ? stopWatching : startWatching}
             disabled={loading}
           >
             <Text style={styles.buttonText}>
-              {watching ? '⏹️ Detener' : '▶️ Seguir'}
+              {watching ? 'Detener' : 'Seguir'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -317,6 +348,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
   },
+  watchingText: {
+    fontSize: 12,
+    color: '#27ae60',
+    fontWeight: '600',
+    marginTop: 4,
+  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -324,16 +361,21 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    backgroundColor: '#E74C3C',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
-  activeButton: {
-    backgroundColor: '#C0392B',
+  startButton: {
+    backgroundColor: '#27ae60',
+  },
+  stopButton: {
+    backgroundColor: '#e74c3c',
+  },
+  disabledButton: {
+    backgroundColor: '#95a5a6',
   },
   buttonText: {
-    color: 'white',
+    color: 'black',
     fontWeight: '600',
     fontSize: 12,
   },
