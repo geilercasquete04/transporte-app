@@ -1,16 +1,8 @@
 import { StyleSheet } from 'react-native';
-import { ThemedText } from "../../components/ThemedText";
-import { ThemedView } from "../../components/ThemedView";
+import TruckMapComponent from "../../components/TruckMapComponent";
 
 export default function Rutas() {
-  return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.titulo}>Rutas</ThemedText>
-      <ThemedText style={styles.texto}>
-        Aquí las personas verán los recorridos del camión
-      </ThemedText>
-    </ThemedView>
-  );
+  return <TruckMapComponent showFollowMode={false} />;
 }
 
 const styles = StyleSheet.create({

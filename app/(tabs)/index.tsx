@@ -1,11 +1,11 @@
 import { SafeAreaView, StatusBar, StyleSheet } from "react-native";
-import MapComponent from "../../components/MapComponent";
+import TruckMapComponent from "../../components/TruckMapComponent";
 
 export default function Index() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" backgroundColor="#2E86AB" />
-      <MapComponent />
+      <TruckMapComponent showFollowMode={true} />
     </SafeAreaView>
   );
 }
