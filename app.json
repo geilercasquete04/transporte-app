@@ -9,13 +9,21 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+        "supportsTablet": true,
+        "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Esta app necesita acceso a la ubicación para mostrar tu posición en el mapa de rutas del camión de la basura.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Esta app necesita acceso a la ubicación para rastrear las rutas del camión de la basura."
+      }
     },
     "android": {
-      "adaptiveIcon": {
+        "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "edgeToEdgeEnabled": true
     },
     "web": {
