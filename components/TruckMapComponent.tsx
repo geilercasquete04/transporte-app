@@ -1,17 +1,17 @@
 import * as Location from 'expo-location';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
   ScrollView,
+  StyleSheet,
   Switch,
+  Text,
   TextInput,
-  Modal
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 

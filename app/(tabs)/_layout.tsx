@@ -1,7 +1,8 @@
+// app/(tabs)/_layout.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { Colors } from "../..//constants/Colors";
 import { ThemeToggle } from "../../components/ThemeToggle";
+import { Colors } from "../../constants/Colors";
 import { ThemeProvider, useTheme } from "../../contexts/ThemeContext";
 
 function TabsContent() {
@@ -28,6 +29,15 @@ function TabsContent() {
           title: "Inicio",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="vehiculos"
+        options={{
+          title: "Vehículos",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="car" color={color} size={size} />
           ),
         }}
       />
