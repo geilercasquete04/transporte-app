@@ -9,14 +9,17 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-        "supportsTablet": true,
-        "infoPlist": {
+      "supportsTablet": true,
+      "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Esta app necesita acceso a la ubicación para mostrar tu posición en el mapa de rutas del camión de la basura.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Esta app necesita acceso a la ubicación para rastrear las rutas del camión de la basura."
+      },
+      "config": {
+        "googleMapsApiKey": "TU_API_KEY_AQUI"
       }
     },
     "android": {
-        "adaptiveIcon": {
+      "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
@@ -24,7 +27,13 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
       ],
-      "edgeToEdgeEnabled": true
+      "config": {
+        "googleMaps": {
+          "apiKey": "TU_API_KEY_AQUI"
+        }
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.transporteapp"
     },
     "web": {
       "bundler": "metro",

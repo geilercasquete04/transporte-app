@@ -3,9 +3,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Colors } from "../../constants/Colors";
-import { ThemeProvider, useTheme } from "../../contexts/ThemeContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
-function TabsContent() {
+export default function TabLayout() {
   const { isDarkMode } = useTheme();
   const colors = isDarkMode ? Colors.dark : Colors.light;
 
@@ -15,7 +15,7 @@ function TabsContent() {
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
         headerRight: () => <ThemeToggle />,
-        tabBarStyle: { 
+        tabBarStyle: {
           backgroundColor: colors.background,
           borderTopColor: colors.border,
         },
@@ -60,13 +60,5 @@ function TabsContent() {
         }}
       />
     </Tabs>
-  );
-}
-
-export default function TabLayout() {
-  return (
-    <ThemeProvider>
-      <TabsContent />
-    </ThemeProvider>
   );
 }

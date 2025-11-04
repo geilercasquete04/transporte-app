@@ -1,128 +1,129 @@
-// services/vehiculosApi.ts
-import axios from 'axios';
+const API_BASE_URL = "http://apirecoleccion.gonzaloandreslucio.com/api";
 
-const API_BASE_URL = 'http://apirecoleccion.gonzaloandreslucio.com/api';
-
-// 🔐 Token fijo de autenticación
-const TOKEN = '09a3de3c-d389-4049-a670-1081dc02dfed';
-
-// Tipos basados en la API de Recolección de Residuos
 export interface Vehiculo {
-  id: string; // UUID
-  perfil_id: string; // UUID
+  id: string;
   placa: string;
   marca?: string;
-  modelo?: string; // año
+  modelo?: string;
   capacidad?: number;
   tipo_combustible?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface CreateVehiculoDto {
-  placa: string;
-  marca?: string;
-  modelo?: string;
-  activo?: boolean;
-  perfil_id: string; // UUID requerido
-}
-
-export interface UpdateVehiculoDto {
-  placa?: string;
-  marca?: string;
-  modelo?: string;
-  activo?: boolean;
+  estado?: string;
   perfil_id?: string;
 }
 
-// Configuración de axios
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${TOKEN}`, 
-  },
-});
-
-// Funciones para consumir la API de Vehículos
 export const vehiculosApi = {
-  // Obtener todos los vehículos (opcionalmente filtrado por perfil)
-  getVehiculos: async (perfil_id: string): Promise<Vehiculo[]> => {
+  // Obtener vehículos
+  getVehiculos: async (perfilId: string): Promise<Vehiculo[]> => {
     try {
-      const response = await api.get(`/vehiculos?perfil_id=${perfil_id}`);
-      console.log('Vehículos obtenidos:', response.data); // Puedes dejar este log
-
-      // ✅ devuelve solo el array de vehículos
-      return response.data.data; 
-    } catch (error: any) {
-      if (error.response) {
-        console.error('Error al obtener vehículos:', error.response.data);
-      } else {
-        console.error('Error al obtener vehículos:', error.message);
+      console.log("Obteniendo vehículos para perfil:", perfilId);
+      
+      const response = await fetch(`${API_BASE_URL}/vehiculos?perfil_id=${perfilId}`, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+      
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status} - ${responseText}`);
       }
-      throw error;
-    }
-  },
-
-  // Obtener un vehículo por ID
-  getById: async (id: string): Promise<Vehiculo> => {
-    try {
-      const response = await api.get(`/vehiculos/${id}`);
-      return response.data;
+      
+      const data = JSON.parse(responseText);
+      return data.data || data.vehiculos || data || [];
     } catch (error) {
-      console.error(`Error al obtener vehículo ${id}:`, error);
+      console.error("Error al obtener vehículos:", error);
       throw error;
     }
   },
 
-  // Crear un nuevo vehículo
-create: async (vehiculo: CreateVehiculoDto): Promise<Vehiculo> => {
-  try {
-    const vehiculoFormateado = {
-      ...vehiculo,
-      modelo: vehiculo.modelo ? String(vehiculo.modelo) : undefined,
-    };
-
-    console.log('📤 Enviando datos de vehículo:', vehiculoFormateado);
-
-    const response = await api.post('/vehiculos', vehiculoFormateado);
-
-    console.log('✅ Vehículo creado con éxito:', response.data);
-    return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      console.error('❌ Error al crear vehículo:');
-      console.error('➡️ Status:', error.response.status);
-      console.error('➡️ Data:', error.response.data);
-      console.error('➡️ Headers:', error.response.headers);
-    } else {
-      console.error('⚠️ Error inesperado:', error.message);
+  // Crear vehículo
+  create: async (vehiculoData: Partial<Vehiculo>): Promise<Vehiculo> => {
+    try {
+      console.log("Creando vehículo:", vehiculoData);
+      
+      const response = await fetch(`${API_BASE_URL}/vehiculos`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(vehiculoData),
+      });
+      
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        const errorData = JSON.parse(responseText);
+        const error: any = new Error(errorData.message || "Error al crear vehículo");
+        error.response = { data: errorData };
+        throw error;
+      }
+      
+      const data = JSON.parse(responseText);
+      return data.data || data;
+    } catch (error) {
+      console.error("Error al crear vehículo:", error);
+      throw error;
     }
+  },
+
+  // Actualizar vehículo
+  update: async (id: string, vehiculoData: Partial<Vehiculo>): Promise<Vehiculo> => {
+    try {
+      console.log("Actualizando vehículo:", id, vehiculoData);
+      
+      const response = await fetch(`${API_BASE_URL}/vehiculos/${id}`, {
+        method: "PUT",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(vehiculoData),
+      });
+      
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        const errorData = JSON.parse(responseText);
+        const error: any = new Error(errorData.message || "Error al actualizar vehículo");
+        error.response = { data: errorData };
+        throw error;
+      }
+      
+      const data = JSON.parse(responseText);
+      return data.data || data;
+    } catch (error) {
+      console.error("Error al actualizar vehículo:", error);
+      throw error;
+    }
+  },
+
+// Eliminar vehículo
+delete: async (id: string, perfilId: string): Promise<void> => {
+  try {
+    console.log("Eliminando vehículo:", id);
+    
+    const response = await fetch(`${API_BASE_URL}/vehiculos/${id}?perfil_id=${perfilId}`, {
+      method: "DELETE",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+    
+    if (!response.ok) {
+      const responseText = await response.text();
+      const errorData = JSON.parse(responseText);
+      const error: any = new Error(errorData.message || "Error al eliminar vehículo");
+      error.response = { data: errorData };
+      throw error;
+    }
+  } catch (error) {
+    console.error("Error al eliminar vehículo:", error);
     throw error;
   }
 },
-
-  // Actualizar un vehículo
-  update: async (id: string, vehiculo: UpdateVehiculoDto): Promise<Vehiculo> => {
-    try {
-      const response = await api.put(`/vehiculos/${id}`, vehiculo);
-      return response.data;
-    } catch (error) {
-      console.error(`Error al actualizar vehículo ${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Eliminar un vehículo
-  delete: async (id: string): Promise<void> => {
-    try {
-      await api.delete(`/vehiculos/${id}`);
-    } catch (error) {
-      console.error(`Error al eliminar vehículo ${id}:`, error);
-      throw error;
-    }
-  },
 };
-
-export default vehiculosApi;

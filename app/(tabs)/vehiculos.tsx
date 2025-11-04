@@ -31,7 +31,7 @@ export default function VehiculosScreen() {
   const [selectedVehiculo, setSelectedVehiculo] = useState<Vehiculo | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-
+  const [isEditing, setIsEditing] = useState(false); // Nuevo estado
 
   const perfil_id = '09a3de3c-d389-4049-a670-1081dc02dfed';
 
@@ -43,9 +43,9 @@ export default function VehiculosScreen() {
     tipo_combustible: '',
   });
 
-const cargarVehiculos = async () => {
+  const cargarVehiculos = async () => {
     try {
-      const perfil_id = '09a3de3c-d389-4049-a670-1081dc02dfed'; // temporal
+      const perfil_id = '09a3de3c-d389-4049-a670-1081dc02dfed';
       const data = await vehiculosApi.getVehiculos(perfil_id);
       setVehiculos(data);
     } catch (error) {
@@ -55,35 +55,9 @@ const cargarVehiculos = async () => {
     }
   };
 
-
-useEffect(() => {
-  cargarVehiculos();
-}, []);
-
-
-  // const cargarVehiculos = async () => {
-  //   try {
-  //     const perfil_id = '09a3de3c-d389-4049-a670-1081dc02dfed'; // temporal, o el que tengas guardado
-  //     const data = await vehiculosApi.getVehiculos(perfil_id);
-  //     setVehiculos(data);
-  //   } catch (error) {
-  //     console.error('No se pudieron cargar los vehículos:', error);
-  //   }
-  // };
-
-  // const fetchVehiculos = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const data = await vehiculosApi.getVehiculos(perfil_id);
-  //     setVehiculos(data);
-  //   } catch (error: any) {
-  //     const mensaje = error.response?.data?.message || 'No se pudieron cargar los vehículos';
-  //     Alert.alert('Error', mensaje);
-  //     console.error(error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  useEffect(() => {
+    cargarVehiculos();
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -92,29 +66,31 @@ useEffect(() => {
   };
 
   const handleDelete = (id: string, placa: string) => {
-    Alert.alert(
-      'Confirmar eliminación',
-      `¿Estás seguro de eliminar el vehículo ${placa}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await vehiculosApi.delete(id);
-              Alert.alert('Éxito', 'Vehículo eliminado correctamente');
-              cargarVehiculos();
-              setSelectedVehiculo(null);
-            } catch (error: any) {
-              const mensaje = error.response?.data?.error || 'Error al eliminar el vehículo';
-              Alert.alert('Error', mensaje);
-            }
-          },
+  Alert.alert(
+    'Confirmar eliminación',
+    `¿Estás seguro de eliminar el vehículo ${placa}?`,
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await vehiculosApi.delete(id, perfil_id); // ✅ Agregado perfil_id
+            Alert.alert('Éxito', 'Vehículo eliminado correctamente');
+            cargarVehiculos();
+            setSelectedVehiculo(null);
+          } catch (error: any) {
+            const mensaje = error.response?.data?.error || 
+                           error.response?.data?.message || 
+                           'Error al eliminar el vehículo';
+            Alert.alert('Error', mensaje);
+          }
         },
-      ]
-    );
-  };
+      },
+    ]
+  );
+};
 
   const handleCreateVehiculo = async () => {
     if (!formData.placa.trim()) {
@@ -155,6 +131,63 @@ useEffect(() => {
     }
   };
 
+  // Nueva función para actualizar vehículo
+  // Nueva función para actualizar vehículo
+const handleUpdateVehiculo = async () => {
+  if (!selectedVehiculo || !formData.placa.trim()) {
+    Alert.alert('Error', 'La placa es obligatoria');
+    return;
+  }
+
+  try {
+    setIsCreating(true);
+    
+    const vehiculoData: any = {
+      placa: formData.placa.trim().toUpperCase(),
+      perfil_id: perfil_id, // ✅ Agregado
+    };
+
+    if (formData.marca.trim()) vehiculoData.marca = formData.marca.trim();
+    if (formData.modelo.trim()) vehiculoData.modelo = formData.modelo.trim();
+    if (formData.capacidad.trim()) {
+      vehiculoData.capacidad = parseFloat(formData.capacidad);
+    }
+    if (formData.tipo_combustible.trim()) {
+      vehiculoData.tipo_combustible = formData.tipo_combustible.trim();
+    }
+
+    await vehiculosApi.update(selectedVehiculo.id, vehiculoData);
+    
+    Alert.alert('Éxito', 'Vehículo actualizado correctamente');
+    setShowModal(false);
+    setIsEditing(false);
+    resetForm();
+    setSelectedVehiculo(null);
+    cargarVehiculos();
+  } catch (error: any) {
+    const mensaje = error.response?.data?.message || 
+                    error.response?.data?.error ||
+                    'Error al actualizar el vehículo';
+    Alert.alert('Error', mensaje);
+  } finally {
+    setIsCreating(false);
+  }
+};
+
+  // Nueva función para abrir modo edición
+  const handleEditVehiculo = (vehiculo: Vehiculo) => {
+    setFormData({
+      placa: vehiculo.placa,
+      marca: vehiculo.marca || '',
+      modelo: vehiculo.modelo?.toString() || '',
+      capacidad: vehiculo.capacidad?.toString() || '',
+      tipo_combustible: vehiculo.tipo_combustible || '',
+    });
+    setSelectedVehiculo(vehiculo);
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
   const resetForm = () => {
     setFormData({
       placa: '',
@@ -176,16 +209,15 @@ useEffect(() => {
       onLongPress={() => handleDelete(item.id, item.placa)}
     >
       <View style={styles.cardHeader}>
-        <Text style={[styles.placa, { color: colors.primary }]}>Placa: {item.placa}</Text>
+        <Text style={[styles.placa, { color: colors.primary }]}>🚛 {item.placa}</Text>
         <View style={[styles.badge, { backgroundColor: colors.primary + '20' }]}>
-          <Text style={[styles.badgeText, { color: colors.primary }]}>•••</Text>
+          <Text style={[styles.badgeText, { color: colors.primary }]}>Ver</Text>
         </View>
       </View>
       
       <View style={styles.cardBody}>
-        <Text style={[styles.label, { color: colors.text }]}>Marca: {item.marca}</Text>
-        <Text style={[styles.label, { color: colors.text }]}>Modelo: {item.modelo}</Text>
-        {/* <Text style={[styles.label, { color: colors.text }]}>Modelo: {item.modelo ? `(${item.modelo})` : ''}</Text> */}
+        {item.marca && <Text style={[styles.label, { color: colors.text }]}>Marca: {item.marca}</Text>}
+        {item.modelo && <Text style={[styles.label, { color: colors.text }]}>Modelo: {item.modelo}</Text>}
       </View>
     </TouchableOpacity>
   );
@@ -233,6 +265,8 @@ useEffect(() => {
         style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() => {
           resetForm();
+          setIsEditing(false);
+          setSelectedVehiculo(null);
           setShowModal(true);
         }}
       >
@@ -240,7 +274,7 @@ useEffect(() => {
       </TouchableOpacity>
 
       {/* Panel de detalles */}
-      {selectedVehiculo && (
+      {selectedVehiculo && !showModal && (
         <View style={[styles.detailPanel, { backgroundColor: colors.card }]}>
           <View style={[styles.detailHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.detailTitle, { color: colors.text }]}>Detalles del Vehículo</Text>
@@ -250,8 +284,7 @@ useEffect(() => {
           </View>
           
           <ScrollView style={styles.detailContent}>
-            
-            <Text style={[styles.detailPlaca, { color: colors.primary }]}>{selectedVehiculo.placa}</Text>
+            <Text style={[styles.detailPlaca, { color: colors.primary }]}>🚛 {selectedVehiculo.placa}</Text>
             
             <View style={styles.detailSection}>
               {selectedVehiculo.marca && (
@@ -268,6 +301,15 @@ useEffect(() => {
               )}
             </View>
 
+            {/* Botón de Editar */}
+            <TouchableOpacity
+              style={[styles.editButton, { backgroundColor: colors.primary }]}
+              onPress={() => handleEditVehiculo(selectedVehiculo)}
+            >
+              <Text style={styles.editButtonText}>✏️ Editar Vehículo</Text>
+            </TouchableOpacity>
+
+            {/* Botón de Eliminar */}
             <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => handleDelete(selectedVehiculo.id, selectedVehiculo.placa)}
@@ -278,12 +320,16 @@ useEffect(() => {
         </View>
       )}
 
-      {/* Modal para crear vehículo */}
+      {/* Modal para crear/editar vehículo */}
       <Modal
         visible={showModal}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowModal(false)}
+        onRequestClose={() => {
+          setShowModal(false);
+          setIsEditing(false);
+          resetForm();
+        }}
       >
         <KeyboardAvoidingView
           style={styles.modalContainer}
@@ -291,8 +337,14 @@ useEffect(() => {
         >
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Nuevo Vehículo</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {isEditing ? 'Editar Vehículo' : 'Nuevo Vehículo'}
+              </Text>
+              <TouchableOpacity onPress={() => {
+                setShowModal(false);
+                setIsEditing(false);
+                resetForm();
+              }}>
                 <Text style={[styles.closeButton, { color: colors.secondary }]}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -342,8 +394,6 @@ useEffect(() => {
                   onChangeText={(text) => setFormData({ ...formData, modelo: text })}
                   placeholder="Ej: 2022"
                   placeholderTextColor={colors.secondary}
-                  keyboardType="numeric"
-                  maxLength={4}
                 />
               </View>
 
@@ -384,11 +434,11 @@ useEffect(() => {
                   { backgroundColor: colors.primary },
                   isCreating && styles.submitButtonDisabled
                 ]}
-                onPress={handleCreateVehiculo}
+                onPress={isEditing ? handleUpdateVehiculo : handleCreateVehiculo}
                 disabled={isCreating}
               >
                 <Text style={styles.submitButtonText}>
-                  {isCreating ? 'Guardando...' : '✓ Crear Vehículo'}
+                  {isCreating ? 'Guardando...' : (isEditing ? '✓ Actualizar Vehículo' : '✓ Crear Vehículo')}
                 </Text>
               </TouchableOpacity>
             </ScrollView>
@@ -447,7 +497,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   placa: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   badge: {
@@ -456,7 +506,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   badgeText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   cardBody: {
@@ -545,7 +595,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   detailPlaca: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
@@ -568,6 +618,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
     textAlign: 'right',
+  },
+  editButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   deleteButton: {
     backgroundColor: '#f44336',

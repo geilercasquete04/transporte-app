@@ -1,29 +1,36 @@
-import { SafeAreaView, StatusBar, StyleSheet } from "react-native";
-import TruckMapComponent from "../../components/TruckMapComponent";
+import MapLibreMap from "@/components/MapLibreMap";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import { StatusBar, StyleSheet } from "react-native";
+import { ThemedView } from "../../components/ThemedView";
+import { Colors } from "../../constants/Colors";
+import { useTheme } from "../../contexts/ThemeContext";
+
+interface Calle {
+  id: number;
+  nombre: string;
+  descripcion: string;
+}
 
 export default function Index() {
+  const [calles, setCalles] = useState<Calle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { isDarkMode } = useTheme();
+  const colors = isDarkMode ? Colors.dark : Colors.light;
+
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#2E86AB" />
-      <TruckMapComponent showFollowMode={true} />
-    </SafeAreaView>
+      
+      <MapLibreMap nombre="Mi ubicación actual" />
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     padding: 20,
-  },
-  titulo: {
-    marginBottom: 20,
-  },
-  texto: {
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 10,
-    lineHeight: 22,
   },
 });
