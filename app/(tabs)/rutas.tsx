@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useRoute } from "../../components/routeContext";
 import { ThemedText } from "../../components/ThemedText";
 import { ThemedView } from "../../components/ThemedView";
 import { Colors } from "../../constants/Colors";
@@ -32,8 +34,9 @@ export default function RutasScreen() {
   const [selectedCalles, setSelectedCalles] = useState<string[]>([]);
   const [nombreRuta, setNombreRuta] = useState("");
   const [colorHex, setColorHex] = useState("#FF5733");
-  
-  const perfilId = "09a3de3c-d389-4049-a670-1081dc02dfed";
+  const { setSelectedRoute } = useRoute();
+  const router = useRouter();
+  const perfil_id = "09a3de3c-d389-4049-a670-1081dc02dfed";
   const { isDarkMode } = useTheme();
   const colors = isDarkMode ? Colors.dark : Colors.light;
 
@@ -41,7 +44,7 @@ export default function RutasScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data = await rutasApi.obtenerRutas(perfilId);
+      const data = await rutasApi.obtenerRutas(perfil_id);
       setRutas(data);
     } catch (err) {
       setError("Error al cargar las rutas. Verifica el ID de perfil.");
@@ -101,7 +104,7 @@ export default function RutasScreen() {
 
       const rutaData: CrearRutaData = {
         nombre_ruta: nombreRuta.trim(),
-        perfil_id: perfilId,
+        perfil_id: perfil_id,
         shape: JSON.stringify(shapeData),
         calles_ids: selectedCalles,
         color_hex: colorHex,
@@ -158,9 +161,53 @@ export default function RutasScreen() {
     */
   };
 
-  const handleVerDetalleRuta = (ruta: Ruta) => {
-    setSelectedRuta(ruta);
-    setShowDetailModal(true);
+  const handleVerDetalleRuta = async (ruta: Ruta) => {
+    try {
+      setShowDetailModal(true);
+      setSelectedRuta(ruta);
+      
+      // Obtener las coordenadas de la ruta desde sus calles
+      const coordenadas = await rutasApi.obtenerCoordinadasDeRuta(ruta);
+      
+      if (coordenadas.length > 0) {
+        // Guardar la ruta en el context para que el mapa la pueda usar
+        setSelectedRoute({
+          id: ruta.id,
+          nombre_ruta: ruta.nombre_ruta,
+          color_hex: ruta.color_hex || "#007AFF",
+          coordinates: coordenadas,
+        });
+        
+        Alert.alert(
+          "Ruta cargada",
+          `La ruta "${ruta.nombre_ruta}" está lista para verse en el mapa con ${coordenadas.length} puntos.\n\n¿Deseas ir al mapa ahora?`,
+          [
+            {
+              text: "Ver en mapa",
+              onPress: () => {
+                setShowDetailModal(false);
+                router.push("/(tabs)"); // Navegar al tab del mapa
+              },
+            },
+            {
+              text: "Quedarse aquí",
+              style: "cancel",
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "Sin coordenadas",
+          "Esta ruta no tiene calles con coordenadas para mostrar en el mapa."
+        );
+      }
+    } catch (error) {
+      console.error("Error al cargar coordenadas de ruta:", error);
+      Alert.alert(
+        "Error",
+        "No se pudieron cargar las coordenadas de la ruta. Verifica que las calles tengan coordenadas."
+      );
+    }
   };
 
   const resetForm = () => {
