@@ -13,7 +13,9 @@ export default function Index() {
       <StatusBar barStyle="dark-content" backgroundColor="#2E86AB" />
 
       {/* EL MAPA DEBE IR DIRECTAMENTE EN UN VIEW CON FLEX 1 */}
-      <MapLibreMap nombre="Mi ubicación actual" />
+      
+
+      <MapLibreMap/>
     </View>
   );
 }

@@ -61,15 +61,44 @@ export default function RutasScreen() {
   }, []);
 
   // ======== Seleccionar ruta ========
-  const handleSelectRuta = (ruta: Ruta) => {
+const handleSelectRuta = (ruta: Ruta) => {
+  try {
+    console.log("SHAPE RECIBIDO:", ruta.shape);
+
+    // 1️⃣ Parsear shape
+    const shape = JSON.parse(ruta.shape);
+
+    let coords: [number, number][] = [];
+
+    // 2️⃣ Validar tipo MultiLineString
+    if (
+      shape.type === "MultiLineString" &&
+      Array.isArray(shape.coordinates)
+    ) {
+      shape.coordinates.forEach((segment: [number, number][]) => {
+        if (Array.isArray(segment)) {
+          coords.push(...segment);
+        }
+      });
+    }
+
+    console.log("COORDENADAS PARSEADAS:", coords);
+
+    // 3️⃣ Guardar en context
     setSelectedRoute({
       id: ruta.id,
       perfil_id: ruta.perfil_id,
       nombre_ruta: ruta.nombre_ruta,
-      color_hex: "#007AFF",
-      coordinates: [], // luego las decodificamos
+      color_hex: ruta.color_hex || "#007AFF",
+      coordinates: coords,
     });
-  };
+
+  } catch (err) {
+    console.log("❌ ERROR PARSEANDO SHAPE:", err);
+  }
+};
+
+
 
   // ======== Cargar calles ========
   const cargarCalles = async () => {

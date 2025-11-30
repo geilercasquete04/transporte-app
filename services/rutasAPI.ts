@@ -3,6 +3,7 @@ import axios from "axios";
 const API_URL = "https://apirecoleccion.gonzaloandreslucio.com/api";
 
 export interface Ruta {
+  color_hex: string;
   id: string;
   nombre_ruta: string;
   perfil_id: string;
