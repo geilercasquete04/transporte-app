@@ -1,6 +1,7 @@
 const API_BASE_URL = "http://apirecoleccion.gonzaloandreslucio.com/api";
 
 export interface Calle {
+  coordenadas: never[];
   id: string;
   nombre: string;
   shape: string;

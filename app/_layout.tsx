@@ -1,6 +1,6 @@
 // app/_layout.tsx o app/(tabs)/_layout.tsx
 import { Stack } from 'expo-router';
-import { RouteProvider } from '../components/routeContext';
+import { RouteProvider } from '../components/RouteContext';
 import { ThemeProvider } from '../contexts/ThemeContext'; // Si ya existe
 
 export default function RootLayout() {

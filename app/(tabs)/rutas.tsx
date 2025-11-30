@@ -13,13 +13,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRoute } from "../../components/routeContext";
+import { useRoute } from "../../components/RouteContext";
 import { ThemedText } from "../../components/ThemedText";
 import { ThemedView } from "../../components/ThemedView";
 import { Colors } from "../../constants/Colors";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Calle, callesApi } from "../../services/callesAPI";
-import { CrearRutaData, Ruta, rutasApi } from "../../services/rutasAPI";
+import { Ruta, rutasApi } from "../../services/rutasAPI";
 
 export default function RutasScreen() {
   const [rutas, setRutas] = useState<Ruta[]>([]);
@@ -82,50 +82,47 @@ export default function RutasScreen() {
     );
   };
 
-  const handleCrearRuta = async () => {
-    if (!nombreRuta.trim()) {
-      Alert.alert("Error", "El nombre de la ruta es obligatorio");
-      return;
-    }
+const handleCrearRuta = async () => {
+  if (!nombreRuta.trim()) {
+    Alert.alert("Error", "El nombre de la ruta es obligatorio");
+    return;
+  }
 
-    if (selectedCalles.length === 0) {
-      Alert.alert("Error", "Debes seleccionar al menos una calle");
-      return;
-    }
+  if (selectedCalles.length === 0) {
+    Alert.alert("Error", "Debes seleccionar al menos una calle");
+    return;
+  }
 
-    try {
-      setIsCreating(true);
+  try {
+    setIsCreating(true);
 
-      const shapeData = {
-        type: "LineString",
-        coordinates: [],
-        calles: selectedCalles,
-      };
+    const rutaData = Object.freeze({
+  nombre_ruta: nombreRuta.trim(),
+  perfil_id: perfil_id,
+  color_hex: colorHex,
+  calles_ids: selectedCalles,
+});
 
-      const rutaData: CrearRutaData = {
-        nombre_ruta: nombreRuta.trim(),
-        perfil_id: perfil_id,
-        shape: JSON.stringify(shapeData),
-        calles_ids: selectedCalles,
-        color_hex: colorHex,
-      };
 
-      await rutasApi.crearRuta(rutaData);
-      
-      Alert.alert("Éxito", "Ruta creada correctamente");
-      setShowModal(false);
-      resetForm();
-      cargarRutas();
-    } catch (error: any) {
-      const mensaje = error.response?.data?.message || 
-                      error.response?.data?.error ||
-                      "Error al crear la ruta";
-      Alert.alert("Error", mensaje);
-      console.error("Error completo:", error);
-    } finally {
-      setIsCreating(false);
-    }
-  };
+    const res = await rutasApi.crearRuta(rutaData);
+
+    console.log("✔️ RESPUESTA:", res);
+
+    Alert.alert("Éxito", "Ruta creada correctamente");
+    setShowModal(false);
+    resetForm();
+    cargarRutas();
+
+  } catch (error: any) {
+    console.log("❌ ERROR RAW:", error);
+    console.log("❌ RESPONSE:", error.response?.data);
+
+    Alert.alert("Error", error.response?.data?.message || "Error al crear ruta");
+  } finally {
+    setIsCreating(false);
+  }
+};
+
 
   const handleEliminarRuta = (ruta: Ruta) => {
     Alert.alert(
@@ -423,7 +420,7 @@ export default function RutasScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.form}>
+            <View style={styles.form}>
               {/* Nombre de la ruta */}
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: colors.text }]}>
@@ -500,7 +497,7 @@ export default function RutasScreen() {
                   {isCreating ? "Guardando..." : "✓ Crear Ruta"}
                 </Text>
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>

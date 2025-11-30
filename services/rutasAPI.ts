@@ -1,326 +1,245 @@
-const API_BASE_URL = "http://apirecoleccion.gonzaloandreslucio.com/api";
+// services/rutasAPI.ts
+import axios from "axios";
 
-export interface Ruta {
-  id: string;
-  perfil_id: string;
-  nombre_ruta: string;
-  color_hex: string;
-  shape: string;
-  created_at?: string;
-  updated_at?: string;
-}
+const API_URL = "http://apirecoleccion.gonzaloandreslucio.com/api";
 
 export interface CrearRutaData {
   nombre_ruta: string;
   perfil_id: string;
-  shape: string;
-  calles_ids: string[];
-  color_hex?: string;
+  color_hex?: string; // Hacerlo opcional
+  shape?: string;
+  calles_ids?: string[];
 }
 
-export interface Calle {
+export interface Ruta {
   id: string;
-  nombre: string;
-  shape: string;
+  nombre_ruta: string;
+  perfil_id: string;
+  color_hex: string;
+  shape?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const rutasApi = {
-  // Obtener rutas
-  obtenerRutas: async (perfilId: string): Promise<Ruta[]> => {
-    try {
-      console.log("Obteniendo rutas para perfil:", perfilId);
-      
-      const response = await fetch(`${API_BASE_URL}/rutas?perfil_id=${perfilId}`, {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-      });
-      
-      const responseText = await response.text();
-      console.log("Respuesta recibida:", responseText.substring(0, 300));
-      
-      if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status} - ${responseText}`);
-      }
-      
-      const data = JSON.parse(responseText);
-      console.log("Datos parseados:", data);
-      
-      return data.data || data.rutas || data || [];
-    } catch (error) {
-      console.error("Error completo al obtener rutas:", error);
-      throw error;
-    }
+  async obtenerRutas(perfil_id: string): Promise<Ruta[]> {
+    const res = await axios.get(`${API_URL}/rutas`, {
+      params: { perfil_id }
+    });
+
+    return res.data.data || [];
   },
 
-  // Obtener coordenadas de las calles de una ruta
-  obtenerCoordinadasDeRuta: async (ruta: Ruta): Promise<Array<[number, number]>> => {
-    try {
-      console.log("=== EXTRAYENDO COORDENADAS DE RUTA ===");
-      console.log("Ruta:", ruta.nombre_ruta);
-      
-      // 1. Parsear el shape de la ruta
-      let shapeData;
-      try {
-        shapeData = typeof ruta.shape === 'string' ? JSON.parse(ruta.shape) : ruta.shape;
-        console.log("Shape parseado:", shapeData);
-      } catch (e) {
-        console.error("Error parseando shape:", e);
-        return [];
-      }
+  // CREAR RUTA CON FETCH NATIVO (más compatible con React Native)
+  async crearRuta(rutaData: CrearRutaData) {
+    console.log("📤 Datos originales:", rutaData);
 
-      // 2. Obtener IDs de calles del shape
-      let callesIds: string[] = [];
-      
-      if (shapeData.calles && Array.isArray(shapeData.calles)) {
-        callesIds = shapeData.calles;
-        console.log("Calles encontradas en shape.calles:", callesIds);
-      }
-      
-      if (callesIds.length === 0) {
-        console.log("❌ No se encontraron calles asociadas a esta ruta");
-        console.log("Estructura del shape:", JSON.stringify(shapeData, null, 2));
-        return [];
-      }
+    const tieneShape = !!rutaData.shape;
+    const tieneCalles = rutaData.calles_ids?.length;
 
-      // 3. Obtener todas las calles de la API
-      console.log("Obteniendo todas las calles...");
-      const callesResponse = await fetch(`${API_BASE_URL}/calles`, {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-      });
-      
-      if (!callesResponse.ok) {
-        throw new Error("Error al obtener calles");
-      }
-      
-      const callesData = await callesResponse.json();
-      const todasLasCalles: Calle[] = callesData.data || callesData.calles || callesData || [];
-      console.log(`Total de calles disponibles: ${todasLasCalles.length}`);
-      
-      // 4. Filtrar solo las calles de esta ruta
-      const callesDeRuta = todasLasCalles.filter((calle: Calle) => 
-        callesIds.includes(calle.id)
-      );
-      
-      console.log(`✅ Encontradas ${callesDeRuta.length} calles para la ruta`);
-      console.log("Calles de la ruta:", callesDeRuta.map(c => c.nombre));
-      
-      if (callesDeRuta.length === 0) {
-        console.log("⚠️ Ninguna calle coincide con los IDs de la ruta");
-        console.log("IDs buscados:", callesIds);
-        return [];
-      }
-      
-      // 5. Extraer coordenadas de cada calle
-      const todasLasCoordenadas: Array<[number, number]> = [];
-      
-      for (const calle of callesDeRuta) {
-        try {
-          const calleShape = typeof calle.shape === 'string' 
-            ? JSON.parse(calle.shape) 
-            : calle.shape;
-          
-          console.log(`Procesando calle: ${calle.nombre} (${calleShape.type})`);
-          
-          if (calleShape.coordinates && Array.isArray(calleShape.coordinates)) {
-            if (calleShape.type === 'LineString') {
-              todasLasCoordenadas.push(...calleShape.coordinates);
-              console.log(`  ✓ ${calleShape.coordinates.length} puntos agregados`);
-            } else if (calleShape.type === 'MultiLineString') {
-              for (const lineString of calleShape.coordinates) {
-                todasLasCoordenadas.push(...lineString);
-              }
-              console.log(`  ✓ Múltiples líneas procesadas`);
-            }
-          }
-        } catch (e) {
-          console.error(`Error parseando calle ${calle.nombre}:`, e);
-        }
-      }
-      
-      console.log(`\n🎯 TOTAL DE COORDENADAS EXTRAÍDAS: ${todasLasCoordenadas.length}`);
-      
-      if (todasLasCoordenadas.length > 0) {
-        console.log("Primeras 3 coordenadas:", todasLasCoordenadas.slice(0, 3));
-      }
-      
-      return todasLasCoordenadas;
-      
-    } catch (error) {
-      console.error("❌ ERROR al obtener coordenadas de ruta:", error);
-      throw error;
+    if (!tieneShape && !tieneCalles) {
+      throw new Error("Debes enviar shape o calles_ids.");
     }
-  },
 
-  // Crear ruta - VERSIÓN CORREGIDA
-  crearRuta: async (rutaData: CrearRutaData): Promise<Ruta> => {
-    try {
-      console.log("=== INTENTANDO CREAR RUTA ===");
-      console.log("Datos recibidos:", rutaData);
-      
-      // Intento 1: perfil_id en el body
-      let bodyData: any = {
-        nombre_ruta: rutaData.nombre_ruta,
-        perfil_id: rutaData.perfil_id,
-        shape: rutaData.shape,
-        calles_ids: rutaData.calles_ids,
-        color_hex: rutaData.color_hex || "#FF5733",
-      };
-      
-      console.log("Body (Intento 1 - perfil_id en body):", JSON.stringify(bodyData, null, 2));
-      
-      let response = await fetch(`${API_BASE_URL}/rutas`, {
-        method: "POST",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(bodyData),
+    if (tieneShape && tieneCalles) {
+      throw new Error("Debes enviar SOLO shape O SOLO calles_ids.");
+    }
+
+    const formData = new FormData();
+    
+    // Campos obligatorios
+    // @ts-ignore
+    formData.append("nombre_ruta", rutaData.nombre_ruta);
+    // @ts-ignore
+    formData.append("perfil_id", rutaData.perfil_id);
+    
+    // Color - solo si está definido y no es vacío
+    if (rutaData.color_hex && rutaData.color_hex.trim()) {
+      // @ts-ignore
+      formData.append("color_hex", rutaData.color_hex);
+      console.log("📤 Enviando color:", rutaData.color_hex);
+    } else {
+      console.log("⚠️ Color no enviado (vacío o undefined)");
+    }
+
+    if (tieneShape) {
+      // @ts-ignore
+      formData.append("shape", rutaData.shape!);
+    }
+
+    if (tieneCalles && rutaData.calles_ids) {
+      rutaData.calles_ids.forEach((id) => {
+        // @ts-ignore
+        formData.append("calles_ids[]", id);
       });
-      
-      let responseText = await response.text();
-      console.log("Respuesta (Intento 1):", responseText);
-      
-      // Si falla, intentar con perfil_id como query parameter
-      if (!response.ok && responseText.includes("perfil")) {
-        console.log("⚠️ Intento 1 falló. Probando con perfil_id en query params...");
-        
-        // Quitar perfil_id del body
-        bodyData = {
-          nombre_ruta: rutaData.nombre_ruta,
-          shape: rutaData.shape,
-          calles_ids: rutaData.calles_ids,
-          color_hex: rutaData.color_hex || "#FF5733",
-        };
-        
-        console.log("Body (Intento 2 - sin perfil_id):", JSON.stringify(bodyData, null, 2));
-        console.log("URL (Intento 2):", `${API_BASE_URL}/rutas?perfil_id=${rutaData.perfil_id}`);
-        
-        response = await fetch(`${API_BASE_URL}/rutas?perfil_id=${rutaData.perfil_id}`, {
-          method: "POST",
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(bodyData),
-        });
-        
-        responseText = await response.text();
-        console.log("Respuesta (Intento 2):", responseText);
-      }
-      
-      // Si aún falla, intentar con todos los formatos posibles
-      if (!response.ok && responseText.includes("perfil")) {
-        console.log("⚠️ Intento 2 falló. Probando con FormData...");
-        
-        // Intento 3: Usando FormData
-        const formData = new FormData();
-        formData.append('nombre_ruta', rutaData.nombre_ruta);
-        formData.append('perfil_id', rutaData.perfil_id);
-        formData.append('shape', rutaData.shape);
-        formData.append('color_hex', rutaData.color_hex || "#FF5733");
-        
-        // Agregar calles_ids como array
-        rutaData.calles_ids.forEach((calleId, index) => {
-          formData.append(`calles_ids[${index}]`, calleId);
-        });
-        
-        console.log("Intento 3 - FormData enviado");
-        
-        response = await fetch(`${API_BASE_URL}/rutas`, {
-          method: "POST",
-          headers: {
-            "Accept": "application/json",
-          },
-          body: formData,
-        });
-        
-        responseText = await response.text();
-        console.log("Respuesta (Intento 3):", responseText);
-      }
+    }
+
+    console.log("📤 FormData a enviar:");
+    // @ts-ignore
+    for (let pair of formData.entries()) {
+      console.log(`  - ${pair[0]}: ${pair[1]}`);
+    }
+
+    try {
+      // Usar fetch nativo en lugar de axios
+      const response = await fetch(`${API_URL}/rutas`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          // NO definir Content-Type - fetch lo hace automáticamente con FormData
+        },
+        body: formData,
+      });
+
+      console.log("📥 Response status:", response.status);
+      console.log("📥 Response ok:", response.ok);
+
+      const data = await response.json();
       
       if (!response.ok) {
-        console.error("❌ Todos los intentos fallaron. Error HTTP:", response.status);
-        console.error("Última respuesta:", responseText);
-        const errorData = JSON.parse(responseText);
-        const error: any = new Error(errorData.message || errorData.error || "Error al crear ruta");
-        error.response = { data: errorData, status: response.status };
-        throw error;
+        console.log("❌ Error response:", data);
+        throw new Error(data.message || `HTTP error ${response.status}`);
       }
-      
-      const data = JSON.parse(responseText);
-      console.log("✅ Ruta creada exitosamente:", data);
-      return data.data || data;
+
+      console.log("✅ Respuesta exitosa:", data);
+      return data;
       
     } catch (error: any) {
-      console.error("❌ ERROR COMPLETO al crear ruta:", {
-        message: error.message,
-        response: error.response,
-      });
+      console.log("❌ ERROR completo:", error);
+      console.log("❌ Error message:", error.message);
       throw error;
     }
   },
 
-  // Actualizar ruta
-  actualizarRuta: async (id: string, rutaData: Partial<CrearRutaData>): Promise<Ruta> => {
+  async obtenerCoordinadasDeRuta(ruta: Ruta) {
+    if (!ruta.shape) return [];
+
     try {
-      console.log("Actualizando ruta:", id, rutaData);
-      
-      const response = await fetch(`${API_BASE_URL}/rutas/${id}`, {
-        method: "PUT",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(rutaData),
-      });
-      
-      const responseText = await response.text();
-      
-      if (!response.ok) {
-        const errorData = JSON.parse(responseText);
-        const error: any = new Error(errorData.message || "Error al actualizar ruta");
-        error.response = { data: errorData };
-        throw error;
+      const geo = JSON.parse(ruta.shape);
+      if (geo.type === "LineString" && Array.isArray(geo.coordinates)) {
+        return geo.coordinates;
       }
-      
-      const data = JSON.parse(responseText);
-      return data.data || data;
-    } catch (error) {
-      console.error("Error al actualizar ruta:", error);
-      throw error;
+      return [];
+    } catch {
+      return [];
+    }
+  },
+};
+
+// TESTS DE DIAGNÓSTICO (opcionales)
+export const testApi = {
+  // Test 0: Solo campos mínimos (sin color)
+  async testSinColor() {
+    try {
+      console.log("🧪 Test 0: POST sin color_hex");
+      const formData = new FormData();
+      // @ts-ignore
+      formData.append("nombre_ruta", "Test Sin Color");
+      // @ts-ignore
+      formData.append("perfil_id", "09a3de3c-d389-4049-a670-1081dc02dfed");
+      // @ts-ignore
+      formData.append("calles_ids[]", "813c43d9-5306-4ece-a1a6-2514024d7559");
+
+      const response = await fetch(`${API_URL}/rutas`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log("✅ POST sin color funciona:", response.status, data);
+      return true;
+    } catch (e: any) {
+      console.log("❌ POST sin color falló:", e.message);
+      return false;
     }
   },
 
-  // Eliminar ruta
-  eliminarRuta: async (id: string, perfilId: string): Promise<void> => {
+  // Test 1: POST con JSON simple
+  async testPostJSON() {
     try {
-      console.log("Eliminando ruta:", id);
-      
-      const response = await fetch(`${API_BASE_URL}/rutas/${id}?perfil_id=${perfilId}`, {
-        method: "DELETE",
+      console.log("🧪 Test 1: POST con JSON");
+      const res = await axios.post(`${API_URL}/rutas`, {
+        nombre_ruta: "Test JSON",
+        perfil_id: "09a3de3c-d389-4049-a670-1081dc02dfed",
+        color_hex: "#FF5733",
+        calles_ids: ["813c43d9-5306-4ece-a1a6-2514024d7559"]
+      }, {
         headers: {
-          "Accept": "application/json",
           "Content-Type": "application/json",
-        },
+          "Accept": "application/json"
+        }
       });
-      
-      if (!response.ok) {
-        const responseText = await response.text();
-        const errorData = JSON.parse(responseText);
-        const error: any = new Error(errorData.message || "Error al eliminar ruta");
-        error.response = { data: errorData };
-        throw error;
-      }
-    } catch (error) {
-      console.error("Error al eliminar ruta:", error);
-      throw error;
+      console.log("✅ JSON POST funciona:", res.data);
+      return true;
+    } catch (e: any) {
+      console.log("❌ JSON POST falló:", e.response?.status, e.response?.data || e.message);
+      return false;
     }
   },
+
+  // Test 2: POST con fetch y FormData
+  async testPostFormDataFetch() {
+    try {
+      console.log("🧪 Test 2: POST con fetch + FormData");
+      const formData = new FormData();
+      // @ts-ignore
+      formData.append("nombre_ruta", "Test Fetch");
+      // @ts-ignore
+      formData.append("perfil_id", "09a3de3c-d389-4049-a670-1081dc02dfed");
+      // @ts-ignore
+      formData.append("color_hex", "#FF5733");
+      // @ts-ignore
+      formData.append("calles_ids[]", "813c43d9-5306-4ece-a1a6-2514024d7559");
+
+      const response = await fetch(`${API_URL}/rutas`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log("✅ Fetch POST funciona:", response.status, data);
+      return true;
+    } catch (e: any) {
+      console.log("❌ Fetch POST falló:", e.message);
+      return false;
+    }
+  },
+
+  // Test 3: Verificar que el servidor responde
+  async testConexion() {
+    try {
+      console.log("🧪 Test 3: Verificar conexión GET");
+      const res = await axios.get(`${API_URL}/rutas`, {
+        params: { perfil_id: "09a3de3c-d389-4049-a670-1081dc02dfed" }
+      });
+      console.log("✅ Conexión GET funciona:", res.data.data?.length, "rutas");
+      return true;
+    } catch (e: any) {
+      console.log("❌ Conexión GET falló:", e.message);
+      return false;
+    }
+  },
+
+  // Ejecutar todos los tests
+  async runAllTests() {
+    console.log("🚀 Iniciando tests de API...\n");
+    
+    const test0 = await this.testSinColor();
+    console.log("\n");
+    
+    const test1 = await this.testConexion();
+    console.log("\n");
+    
+    const test2 = await this.testPostJSON();
+    console.log("\n");
+    
+    const test3 = await this.testPostFormDataFetch();
+    console.log("\n");
+    
+    console.log("📊 Resultados:");
+    console.log("  POST sin color:", test0 ? "✅" : "❌");
+    console.log("  GET rutas:", test1 ? "✅" : "❌");
+    console.log("  POST JSON:", test2 ? "✅" : "❌");
+    console.log("  POST FormData (fetch):", test3 ? "✅" : "❌");
+  }
 };
