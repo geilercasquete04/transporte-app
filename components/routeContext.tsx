@@ -3,6 +3,7 @@ import React, { createContext, ReactNode, useContext, useState } from 'react';
 
 export interface SelectedRoute {
   id: string;
+  perfil_id: string;
   nombre_ruta: string;
   color_hex: string;
   coordinates: Array<[number, number]>;

@@ -1,130 +1,121 @@
 // components/MapLibreMap.tsx
-import * as Location from 'expo-location';
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
-import { useRoute } from './RouteContext';
+import MapLibreGL from "@maplibre/maplibre-react-native";
+import * as Location from "expo-location";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useRoute } from "./RouteContext";
 
-interface MapLibreMapProps {
-  nombre: string;
-}
-
-export default function MapLibreMap({ nombre }: MapLibreMapProps) {
-  const mapRef = useRef<MapView>(null);
+export default function MapLibreMap() {
   const { selectedRoute, setSelectedRoute } = useRoute();
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(
+    null
+  );
 
-  const [region, setRegion] = useState({
-    latitude: 3.8758,
-    longitude: -77.0342,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  });
-
+  // Obtener ubicación del dispositivo
   useEffect(() => {
+    const obtenerUbicacion = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      const loc = await Location.getCurrentPositionAsync({});
+      setUserLocation([loc.coords.longitude, loc.coords.latitude]);
+    };
+
     obtenerUbicacion();
   }, []);
 
-  useEffect(() => {
-    if (selectedRoute?.coordinates.length) {
-      centrarEnRuta();
-    }
-  }, [selectedRoute]);
+  if (!userLocation) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
-  const obtenerUbicacion = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permiso denegado", "No se puede acceder a la ubicación");
-        return;
-      }
-
-      const loc = await Location.getCurrentPositionAsync({});
-      const coords = {
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      };
-
-      setUserLocation(coords);
-      setRegion({
-        ...coords,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      });
-    } catch (e) {
-      console.error("Error obteniendo ubicación:", e);
-    }
+  // Punto del usuario
+  const userPoint: any = {
+    type: "Feature",
+    properties: {},
+    geometry: {
+      type: "Point",
+      coordinates: userLocation,
+    },
   };
 
-  const centrarEnRuta = () => {
-    if (!selectedRoute || !mapRef.current) return;
+  // Coordenadas de la ruta seleccionada
+  const routeCoords: [number, number][] = selectedRoute?.coordinates || [];
 
-    const coords = selectedRoute.coordinates.map(([lng, lat]) => ({
-      latitude: lat,
-      longitude: lng,
-    }));
+  // GeoJSON de la ruta
+  const routeFeature: any =
+    routeCoords.length > 0
+      ? {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: routeCoords,
+          },
+        }
+      : null;
 
-    mapRef.current.fitToCoordinates(coords, {
-      edgePadding: { top: 80, bottom: 80, left: 80, right: 80 },
-      animated: true,
-    });
-  };
-
-  const limpiarRuta = () => {
-    setSelectedRoute(null);
-  };
-
-  const routeCoordinates =
-    selectedRoute?.coordinates.map(([lng, lat]) => ({
-      latitude: lat,
-      longitude: lng,
-    })) || [];
+  const limpiarRuta = () => setSelectedRoute(null);
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        provider={PROVIDER_DEFAULT}
+      <MapLibreGL.MapView
         style={styles.map}
-        region={region}
-        showsUserLocation
-        showsMyLocationButton
+        styleURL="https://api.maptiler.com/maps/base-v4/style.json?key=eB3WgCoYPm69Zm3tcZ5d"
       >
-        {userLocation && (
-          <Marker
-            coordinate={userLocation}
-            title={nombre}
-            description="Tu ubicación actual"
-            pinColor="blue"
+        <MapLibreGL.Camera
+          zoomLevel={14}
+          centerCoordinate={
+            routeCoords.length > 0 ? routeCoords[0] : userLocation
+          }
+        />
+
+        {/* Ubicación del usuario */}
+        <MapLibreGL.ShapeSource id="user" shape={userPoint}>
+          <MapLibreGL.SymbolLayer
+            id="userIcon"
+            style={{
+              iconImage: "marker-15",
+              iconSize: 1.5,
+            }}
           />
-        )}
+        </MapLibreGL.ShapeSource>
 
-        {routeCoordinates.length > 0 && (
-          <>
-            <Polyline
-              coordinates={routeCoordinates}
-              strokeColor={selectedRoute?.color_hex || "#007AFF"}
-              strokeWidth={4}
+        {/* Ruta dibujada */}
+        {routeFeature && (
+          <MapLibreGL.ShapeSource id="route" shape={routeFeature}>
+            <MapLibreGL.LineLayer
+              id="rutaLinea"
+              style={{
+                lineColor: "#007AFF",
+                lineWidth: 4,
+              }}
             />
-
-            <Marker coordinate={routeCoordinates[0]} title="Inicio" pinColor="green" />
-            <Marker coordinate={routeCoordinates[routeCoordinates.length - 1]} title="Fin" pinColor="red" />
-          </>
+          </MapLibreGL.ShapeSource>
         )}
-      </MapView>
+      </MapLibreGL.MapView>
 
+      {/* Panel de información */}
       {selectedRoute && (
         <View style={styles.routeInfoPanel}>
           <View style={styles.routeInfoHeader}>
-            <Text style={styles.routeInfoTitle}>🗺️ {selectedRoute.nombre_ruta}</Text>
+            <Text style={styles.routeInfoTitle}>
+              🗺️ {selectedRoute.nombre_ruta}
+            </Text>
+
             <TouchableOpacity onPress={limpiarRuta} style={styles.clearButton}>
               <Text style={styles.clearButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity style={styles.centerButton} onPress={centrarEnRuta}>
-            <Text style={styles.centerButtonText}>📍 Centrar en ruta</Text>
-          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -134,6 +125,7 @@ export default function MapLibreMap({ nombre }: MapLibreMapProps) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   routeInfoPanel: {
     position: "absolute",
@@ -155,23 +147,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   clearButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
     backgroundColor: "#FF3B30",
-    borderRadius: 20,
-    padding: 5,
   },
-  clearButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  centerButton: {
-    marginTop: 10,
-    backgroundColor: "#007AFF",
-    padding: 10,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  centerButtonText: {
-    color: "white",
-    fontWeight: "600",
-  },
+  clearButtonText: { color: "white", fontWeight: "bold" },
 });

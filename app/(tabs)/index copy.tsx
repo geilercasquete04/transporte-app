@@ -1,7 +1,7 @@
-import MapLibreMap from "@/components/MapLibreMap";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { StatusBar, StyleSheet } from "react-native";
+import MapLibreMap from "../../components/MapLibreMap";
 import { ThemedView } from "../../components/ThemedView";
 import { Colors } from "../../constants/Colors";
 import { useTheme } from "../../contexts/ThemeContext";
