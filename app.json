@@ -54,6 +54,12 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3c293355-7407-48b7-bb52-3032a08b523b"
+      }
+    },
+    "owner": "jameva"
   }
 }
