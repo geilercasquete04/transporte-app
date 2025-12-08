@@ -15,7 +15,7 @@ import { useRoute } from "../../components/RouteContext";
 import { Colors } from "../../constants/Colors";
 import { useTheme } from "../../contexts/ThemeContext";
 
-import { Calle } from "../../services/callesAPI";
+import { Calle, callesApi } from "../../services/callesAPI";
 import { Ruta, rutasApi } from "../../services/rutasAPI";
 
 // =====================================================
@@ -133,6 +133,64 @@ export default function RutasScreen() {
       });
     } catch (err) {
       console.log("❌ ERROR PARSEANDO SHAPE:", err);
+    }
+  };
+
+  // =====================================================
+  // 🔥 Cargar Calles
+  // =====================================================
+  const cargarCalles = async () => {
+    try {
+      setLoadingCalles(true);
+      const data = await callesApi.getCalles();
+      setCalles(data);
+    } finally {
+      setLoadingCalles(false);
+    }
+  };
+
+  // =====================================================
+  // 🔥 Crear Ruta
+  // =====================================================
+  const handleCreateRuta = async () => {
+    if (!formData.nombre_ruta.trim()) {
+      return Alert.alert("Error", "Debes ingresar nombre");
+    }
+
+    if (callesSeleccionadas.length === 0) {
+      return Alert.alert("Error", "Debe seleccionar al menos 1 calle");
+    }
+
+    try {
+      setIsCreating(true);
+
+      const shape = {
+        type: "MultiLineString",
+        coordinates: calles
+          .filter((c) => callesSeleccionadas.includes(c.id))
+          .map((c) => JSON.parse(c.shape).coordinates),
+      };
+
+      const data = {
+        nombre_ruta: formData.nombre_ruta.trim(),
+        descripcion: formData.descripcion.trim(),
+        perfil_id,
+        shape: JSON.stringify(shape),
+        calles_ids: callesSeleccionadas,
+      };
+
+      await rutasApi.createRuta(data);
+
+      Alert.alert("Éxito", "Ruta creada correctamente");
+      setShowModal(false);
+      setCallesSeleccionadas([]);
+      setFormData({ nombre_ruta: "", descripcion: "" });
+
+      cargarRutas(); // refrescar lista
+    } catch (error: any) {
+      Alert.alert("Error", "Error al crear ruta");
+    } finally {
+      setIsCreating(false);
     }
   };
   // =====================================================
