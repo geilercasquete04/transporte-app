@@ -44,9 +44,18 @@ export default function TabLayout() {
       <Tabs.Screen
         name="rutas"
         options={{
-          title: "Rutas",
+          title: "Lista de Rutas",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="map" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="creador"
+        options={{
+          title: "Crear Ruta",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="analytics" color={color} size={size} />
           ),
         }}
       />

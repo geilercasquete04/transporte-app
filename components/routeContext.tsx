@@ -6,6 +6,7 @@ export interface SelectedRoute {
   perfil_id: string;
   nombre_ruta: string;
   color_hex: string;
+  descripcion?: string; // 🔥 NUEVO CAMPO OPCIONAL
   coordinates: Array<[number, number]>;
 }
 

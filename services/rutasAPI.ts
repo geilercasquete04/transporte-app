@@ -9,6 +9,7 @@ export interface Ruta {
   perfil_id: string;
   shape: any;               // 👈 AHORA ES JSON OBJETO
   calles_ids: string[];
+  descripcion?: string;
   created_at: string;
   updated_at: string;
 }

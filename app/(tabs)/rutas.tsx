@@ -3,21 +3,43 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
   SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
+
 import { useRoute } from "../../components/RouteContext";
 import { Colors } from "../../constants/Colors";
 import { useTheme } from "../../contexts/ThemeContext";
-import { Calle, callesApi } from "../../services/callesAPI";
+
+import { Calle } from "../../services/callesAPI";
 import { Ruta, rutasApi } from "../../services/rutasAPI";
+
+// =====================================================
+// 🔥 FUNCIÓN HAVERSINE PARA CALCULAR DISTANCIA
+// =====================================================
+function haversine(coord1: [number, number], coord2: [number, number]) {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+
+  const [lon1, lat1] = coord1;
+  const [lon2, lat2] = coord2;
+
+  const R = 6371; // km
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function RutasScreen() {
   const { isDarkMode } = useTheme();
@@ -25,33 +47,39 @@ export default function RutasScreen() {
 
   const perfil_id = "09a3de3c-d389-4049-a670-1081dc02dfed";
 
-  // CALLES
+  // ======== ESTADOS PRINCIPALES ========
   const [calles, setCalles] = useState<Calle[]>([]);
   const [callesSeleccionadas, setCallesSeleccionadas] = useState<string[]>([]);
   const [loadingCalles, setLoadingCalles] = useState(false);
 
-  // RUTAS
   const [rutas, setRutas] = useState<Ruta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   const [formData, setFormData] = useState({
     nombre_ruta: "",
+    descripcion: "",
   });
 
   const { setSelectedRoute } = useRoute();
 
-  // ======== Cargar rutas ========
+  // =====================================================
+  // 🔥 Cargar RUTAS desde API
+  // =====================================================
   const cargarRutas = async () => {
     try {
+      setRefreshing(true);
+      setLoading(true);
+
       const data = await rutasApi.getRutas(perfil_id);
-      console.log("RUTAS DESDE API:", JSON.stringify(data, null, 2));
       setRutas(data);
     } catch (e) {
       Alert.alert("Error", "No se pudieron cargar las rutas");
     } finally {
+      setRefreshing(false);
       setLoading(false);
     }
   };
@@ -60,159 +88,84 @@ export default function RutasScreen() {
     cargarRutas();
   }, []);
 
-  // ======== Seleccionar ruta ========
-const handleSelectRuta = (ruta: Ruta) => {
-  try {
-    console.log("SHAPE RECIBIDO:", ruta.shape);
-
-    // 1️⃣ Parsear shape
-    const shape = JSON.parse(ruta.shape);
-
-    let coords: [number, number][] = [];
-
-    // 2️⃣ Validar tipo MultiLineString
-    if (
-      shape.type === "MultiLineString" &&
-      Array.isArray(shape.coordinates)
-    ) {
-      shape.coordinates.forEach((segment: [number, number][]) => {
-        if (Array.isArray(segment)) {
-          coords.push(...segment);
-        }
-      });
-    }
-
-    console.log("COORDENADAS PARSEADAS:", coords);
-
-    // 3️⃣ Guardar en context
-    setSelectedRoute({
-      id: ruta.id,
-      perfil_id: ruta.perfil_id,
-      nombre_ruta: ruta.nombre_ruta,
-      color_hex: ruta.color_hex || "#007AFF",
-      coordinates: coords,
-    });
-
-  } catch (err) {
-    console.log("❌ ERROR PARSEANDO SHAPE:", err);
-  }
-};
-
-
-
-  // ======== Cargar calles ========
-  const cargarCalles = async () => {
-    try {
-      setLoadingCalles(true);
-      const data = await callesApi.getCalles();
-      setCalles(data);
-      console.log("CALLE EJEMPLO:", JSON.stringify(calles[0], null, 2));
-    } catch (e) {
-      Alert.alert("Error", "No se pudieron cargar las calles");
-    } finally {
-      setLoadingCalles(false);
-    }
-  };
-
-  // ======== Crear Ruta ========
-  const handleCreateRuta = async () => {
-    if (!formData.nombre_ruta.trim()) {
-      return Alert.alert("Error", "El nombre de la ruta es obligatorio");
-    }
-
-    if (callesSeleccionadas.length === 0) {
-      return Alert.alert("Error", "Debe seleccionar al menos 1 calle");
-    }
+  // =====================================================
+  // 🔥 Transformar rutas para calcular distancia
+  // =====================================================
+  const rutasConDistancia = rutas.map((ruta) => {
+    let distancia = 0;
 
     try {
-      setIsCreating(true);
+      const shape = JSON.parse(ruta.shape);
 
-      // ---------------------- NUEVO SHAPE ----------------------
-const shape = {
-  type: "MultiLineString",
-  coordinates: calles
-    .filter((c) => callesSeleccionadas.includes(c.id))
-    .map((c) => {
-      try {
-        const parsed = JSON.parse(c.shape);
-        return parsed.coordinates;
-      } catch {
-        return [];
+      if (shape.type === "MultiLineString" && Array.isArray(shape.coordinates)) {
+        shape.coordinates.forEach((segment: [number, number][]) => {
+          for (let i = 0; i < segment.length - 1; i++) {
+            distancia += haversine(segment[i], segment[i + 1]);
+          }
+        });
       }
-    }),
-};
+    } catch {}
 
-// ---------------------- DATA FINAL ------------------------
-const data = {
-  nombre_ruta: formData.nombre_ruta.trim(),
-  perfil_id,
-  shape: JSON.stringify(shape),
-  calles_ids: callesSeleccionadas,
-};
+    return { ...ruta, distancia };
+  });
 
+  // =====================================================
+  // 🔥 Seleccionar una ruta
+  // =====================================================
+  const handleSelectRuta = (ruta: Ruta) => {
+    try {
+      const shape = JSON.parse(ruta.shape);
+      let coords: [number, number][] = [];
 
-      await rutasApi.createRuta(data);
+      if (shape.type === "MultiLineString") {
+        shape.coordinates.forEach((segment: [number, number][]) => {
+          coords.push(...segment);
+        });
+      }
 
-      Alert.alert("Éxito", "Ruta creada correctamente");
-      setShowModal(false);
-      setCallesSeleccionadas([]);
-      setFormData({ nombre_ruta: "" });
-      cargarRutas();
-    } catch (error: any) {
-      console.log("ERROR AL CREAR RUTA:", JSON.stringify(error, null, 2));
-      console.log("RESPONSE RAW:", error?.response);
-
-      const msg =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        "Error al crear ruta";
-
-      Alert.alert("Error", msg);
-    } finally {
-      setIsCreating(false);
+      setSelectedRoute({
+        id: ruta.id,
+        perfil_id: ruta.perfil_id,
+        nombre_ruta: ruta.nombre_ruta,
+        color_hex: ruta.color_hex || "#007AFF",
+        descripcion: ruta.descripcion || "",
+        coordinates: coords,
+      });
+    } catch (err) {
+      console.log("❌ ERROR PARSEANDO SHAPE:", err);
     }
   };
-
-  // ======== Eliminar Ruta ========
-  const handleDeleteRuta = (id: string, nombre: string) => {
-    Alert.alert(
-      "Eliminar Ruta",
-      `¿Seguro deseas eliminar la ruta "${nombre}"?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await rutasApi.deleteRuta(id, perfil_id);
-              cargarRutas();
-            } catch (e) {
-              Alert.alert("Error", "No se pudo eliminar la ruta");
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  // ======== Render item ========
-  const renderRuta = ({ item }: { item: Ruta }) => (
+  // =====================================================
+  // 🔥 Render lista de items
+  // =====================================================
+  const renderRuta = ({
+    item,
+  }: {
+    item: Ruta & { distancia: number };
+  }) => (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.card }]}
       onPress={() => handleSelectRuta(item)}
-      onLongPress={() => handleDeleteRuta(item.id, item.nombre_ruta)}
     >
       <Text style={[styles.nombre, { color: colors.primary }]}>
         🗺️ {item.nombre_ruta}
       </Text>
+
+      {item.descripcion ? (
+        <Text style={[styles.sub, { color: colors.secondary }]}>
+          {item.descripcion}
+        </Text>
+      ) : null}
+
       <Text style={[styles.sub, { color: colors.secondary }]}>
-        {item.calles_ids?.length ?? 0} calles asignadas
+        Distancia: {item.distancia.toFixed(2)} km
       </Text>
     </TouchableOpacity>
   );
 
-  // ======== Loader ========
+  // =====================================================
+  // 🔥 Loader
+  // =====================================================
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -221,6 +174,9 @@ const data = {
     );
   }
 
+  // =====================================================
+  // 🔥 UI PRINCIPAL
+  // =====================================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
@@ -230,104 +186,20 @@ const data = {
       />
 
       <FlatList
-        data={rutas}
+        data={rutasConDistancia}
         renderItem={renderRuta}
         keyExtractor={(item) => item.id}
+        refreshing={refreshing}
+        onRefresh={cargarRutas}
         contentContainerStyle={{ padding: 16 }}
       />
-
-      {/* FAB */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary }]}
-        onPress={() => {
-          cargarCalles();
-          setShowModal(true);
-        }}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-
-      {/* MODAL */}
-      <Modal visible={showModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Nueva Ruta
-            </Text>
-
-            <ScrollView style={{ marginTop: 10 }}>
-              <Text style={[styles.inputLabel, { color: colors.text }]}>
-                Nombre de la ruta
-              </Text>
-
-              <TextInput
-                style={[styles.input, { color: colors.text }]}
-                value={formData.nombre_ruta}
-                onChangeText={(t) => setFormData({ nombre_ruta: t })}
-              />
-
-              {/* Selector de calles */}
-              <Text style={[styles.inputLabel, { color: colors.text, marginTop: 20 }]}>
-                Selecciona las calles
-              </Text>
-
-              {loadingCalles ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <ScrollView style={{ maxHeight: 200 }}>
-                  {calles.map((calle) => {
-                    const selected = callesSeleccionadas.includes(calle.id);
-
-                    return (
-                      <TouchableOpacity
-                        key={calle.id}
-                        style={styles.calleItem}
-                        onPress={() => {
-                          if (selected) {
-                            setCallesSeleccionadas(
-                              callesSeleccionadas.filter((c) => c !== calle.id)
-                            );
-                          } else {
-                            setCallesSeleccionadas([
-                              ...callesSeleccionadas,
-                              calle.id,
-                            ]);
-                          }
-                        }}
-                      >
-                        <Text style={[styles.calleNombre, { color: colors.text }]}>
-                          {selected ? "☑" : "☐"} {calle.nombre}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              )}
-
-              <TouchableOpacity
-                style={[styles.submitButton, { backgroundColor: colors.primary }]}
-                onPress={handleCreateRuta}
-                disabled={isCreating}
-              >
-                <Text style={styles.submitButtonText}>
-                  {isCreating ? "Guardando..." : "Crear Ruta"}
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={[styles.closeButton, { color: colors.text }]}>
-                Cerrar
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
 
-// ======== ESTILOS ========
+// =====================================================
+// 🔥 STYLES
+// =====================================================
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
