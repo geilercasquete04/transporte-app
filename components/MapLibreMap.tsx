@@ -11,15 +11,14 @@ import {
 import { useRoute } from "../components/RouteContext";
 
 // ======================================================
-// 🔥 Función haversine para calcular distancia recorrida
+// Función haversine
 // ======================================================
 function haversine(coord1: [number, number], coord2: [number, number]) {
   const toRad = (v: number) => (v * Math.PI) / 180;
-
   const [lon1, lat1] = coord1;
   const [lon2, lat2] = coord2;
 
-  const R = 6371; // km
+  const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
 
@@ -38,16 +37,92 @@ export default function MapLibreMap() {
 
   const {
     selectedRoute,
+    selectedVehiculo,
     tracking,
     setTracking,
     trail,
     setTrail,
+    currentRecorridoId,
+    setCurrentRecorridoId,
   } = useRoute();
+
+  const perfil_id = "09a3de3c-d389-4049-a670-1081dc02dfed";
 
   const [distance, setDistance] = useState(0);
 
   // ======================================================
-  // 🔥 Callback estable para manejar actualizaciones GPS
+  // POST: INICIAR RECORRIDO
+  // ======================================================
+  const iniciarRecorridoAPI = async () => {
+    try {
+      if (!selectedRoute) {
+        alert("Debes seleccionar una ruta");
+        return;
+      }
+      if (!selectedVehiculo) {
+        alert("Debes seleccionar un vehículo");
+        return;
+      }
+
+      const body = {
+        ruta_id: selectedRoute.id,
+        vehiculo_id: selectedVehiculo.id,
+        perfil_id,
+      };
+
+      const resp = await fetch(
+        "https://apirecoleccion.gonzaloandreslucio.com/api/recorridos/iniciar",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        console.log("Error iniciar recorrido:", data);
+        alert("Error al iniciar recorrido");
+        return;
+      }
+
+      console.log("Recorrido iniciado:", data);
+      // Asumiendo que la API devuelve { id: "uuid", ... }
+      setCurrentRecorridoId(data.id);
+    } catch (e) {
+      console.log("ERROR iniciar recorrido:", e);
+    }
+  };
+
+  // ======================================================
+  // POST: FINALIZAR RECORRIDO
+  // ======================================================
+  const finalizarRecorridoAPI = async () => {
+    try {
+      if (!currentRecorridoId) return;
+
+      const resp = await fetch(
+        `https://apirecoleccion.gonzaloandreslucio.com/api/recorridos/${currentRecorridoId}/finalizar`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ perfil_id }),
+        }
+      );
+
+      const data = await resp.json();
+      console.log("Recorrido finalizado:", data);
+
+      setCurrentRecorridoId(null);
+    } catch (e) {
+      console.log("ERROR finalizar recorrido:", e);
+    }
+  };
+
+  // ======================================================
+  // Callback estable para actualizaciones GPS
+  // (solo actualiza ubicación + trail)
   // ======================================================
   const handlePosition = useCallback(
     (loc: Location.LocationObject) => {
@@ -63,20 +138,28 @@ export default function MapLibreMap() {
         animationDuration: 300,
       });
 
-      setTrail((prev) => {
-        if (prev.length > 0) {
-          const last = prev[prev.length - 1];
-          const d = haversine(last, coord);
-          setDistance((prevDist) => prevDist + d);
-        }
-        return [...prev, coord];
-      });
+      // 👇 SOLO actualizamos el trail aquí
+      setTrail((prev) => [...prev, coord]);
     },
-    [] // NO depende del render → evita errores
+    [setTrail, setLocation]
   );
 
   // ======================================================
-  // 🔥 Obtener ubicación inicial con alta precisión
+  // Efecto: recalcula la distancia cuando cambia el trail
+  // ======================================================
+  useEffect(() => {
+    if (!tracking) return;
+    if (trail.length < 2) return;
+
+    const last = trail[trail.length - 1];
+    const prev = trail[trail.length - 2];
+
+    const d = haversine(prev, last);
+    setDistance((prevDist) => prevDist + d);
+  }, [trail, tracking]);
+
+  // ======================================================
+  // Ubicación inicial
   // ======================================================
   useEffect(() => {
     const load = async () => {
@@ -85,8 +168,6 @@ export default function MapLibreMap() {
         alert("Activa el GPS.");
         return;
       }
-
-      await Location.enableNetworkProviderAsync();
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
@@ -118,7 +199,7 @@ export default function MapLibreMap() {
   }, []);
 
   // ======================================================
-  // 🔥 Tracking GPS tiempo real (usa el callback estable)
+  // Tracking GPS en tiempo real
   // ======================================================
   useEffect(() => {
     if (!tracking) return;
@@ -134,14 +215,10 @@ export default function MapLibreMap() {
       handlePosition
     ).then((sub) => (subscription = sub));
 
-    return () => {
-      subscription?.remove();
-    };
+    return () => subscription?.remove();
   }, [tracking, handlePosition]);
 
-  // ===============================
   // Loader inicial
-  // ===============================
   if (!location) {
     return (
       <View style={styles.center}>
@@ -150,6 +227,19 @@ export default function MapLibreMap() {
     );
   }
 
+  // ======================================================
+  // Seguridad en coordenadas
+  // ======================================================
+  const safeRouteCoords: [number, number][] =
+    selectedRoute?.coordinates?.filter(
+      (c) => Array.isArray(c) && c.length === 2 && !isNaN(c[0]) && !isNaN(c[1])
+    ) ?? [];
+
+  const routeColor = selectedRoute?.color_hex || "#007AFF";
+
+  // ======================================================
+  // Render principal
+  // ======================================================
   return (
     <View style={styles.container}>
       <MapLibreGL.MapView
@@ -159,53 +249,35 @@ export default function MapLibreMap() {
       >
         <MapLibreGL.Camera ref={cameraRef} zoomLevel={16} />
 
-        {/* 🔵 Ubicación actual */}
+        {/* Ubicación actual */}
         <MapLibreGL.PointAnnotation id="ubicacion" coordinate={location}>
           <View style={styles.userPoint} />
         </MapLibreGL.PointAnnotation>
 
-        {/* RUTA SELECCIONADA */}
-        {selectedRoute && selectedRoute.coordinates.length > 1 && (
-          <>
-            <MapLibreGL.PointAnnotation
-              id="inicio-ruta"
-              coordinate={selectedRoute.coordinates[0]}
-            >
-              <View style={[styles.marker, { backgroundColor: "green" }]} />
-            </MapLibreGL.PointAnnotation>
-
-            <MapLibreGL.PointAnnotation
-              id="fin-ruta"
-              coordinate={
-                selectedRoute.coordinates[selectedRoute.coordinates.length - 1]
-              }
-            >
-              <View style={[styles.marker, { backgroundColor: "red" }]} />
-            </MapLibreGL.PointAnnotation>
-
-            <MapLibreGL.ShapeSource
-              id="ruta"
-              shape={{
-                type: "Feature",
-                properties: {},
-                geometry: {
-                  type: "LineString",
-                  coordinates: selectedRoute.coordinates,
-                },
+        {/* Ruta seleccionada */}
+        {safeRouteCoords.length > 1 && (
+          <MapLibreGL.ShapeSource
+            id="ruta"
+            shape={{
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: safeRouteCoords,
+              },
+            }}
+          >
+            <MapLibreGL.LineLayer
+              id="ruta-layer"
+              style={{
+                lineColor: routeColor,
+                lineWidth: 5,
               }}
-            >
-              <MapLibreGL.LineLayer
-                id="ruta-layer"
-                style={{
-                  lineColor: selectedRoute.color_hex || "#007AFF",
-                  lineWidth: 5,
-                }}
-              />
-            </MapLibreGL.ShapeSource>
-          </>
+            />
+          </MapLibreGL.ShapeSource>
         )}
 
-        {/* RECORRIDO */}
+        {/* Recorrido actual */}
         {trail.length > 1 && (
           <MapLibreGL.ShapeSource
             id="recorrido"
@@ -230,7 +302,7 @@ export default function MapLibreMap() {
         )}
       </MapLibreGL.MapView>
 
-      {/* DISTANCIA */}
+      {/* Distancia */}
       {tracking && (
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
@@ -239,7 +311,7 @@ export default function MapLibreMap() {
         </View>
       )}
 
-      {/* BOTÓN */}
+      {/* Botón iniciar / detener */}
       {selectedRoute && (
         <View style={styles.buttonBox}>
           <TouchableOpacity
@@ -247,12 +319,20 @@ export default function MapLibreMap() {
               styles.btn,
               { backgroundColor: tracking ? "#FF3B30" : "#007AFF" },
             ]}
-            onPress={() => {
+            onPress={async () => {
               if (tracking) {
+                // =============================
+                // DETENER RECORRIDO
+                // =============================
                 setTracking(false);
+                await finalizarRecorridoAPI();
               } else {
+                // =============================
+                // INICIAR RECORRIDO
+                // =============================
                 setTrail([]);
                 setDistance(0);
+                await iniciarRecorridoAPI();
                 setTracking(true);
               }
             }}
@@ -267,6 +347,9 @@ export default function MapLibreMap() {
   );
 }
 
+//
+// ESTILOS
+//
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
@@ -278,14 +361,6 @@ const styles = StyleSheet.create({
     height: 14,
     backgroundColor: "#007AFF",
     borderRadius: 7,
-    borderWidth: 2,
-    borderColor: "white",
-  },
-
-  marker: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
     borderWidth: 2,
     borderColor: "white",
   },
@@ -326,5 +401,13 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 17,
     fontWeight: "bold",
+  },
+
+  marker: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: "white",
   },
 });

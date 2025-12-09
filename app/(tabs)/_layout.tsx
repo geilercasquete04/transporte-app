@@ -60,6 +60,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="recorridos"
+        options={{
+          title: "Recorridos",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="git-compare" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="perfil"
         options={{
           title: "Perfil",
