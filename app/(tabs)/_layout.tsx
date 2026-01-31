@@ -1,10 +1,11 @@
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Colors } from "@/constants/Colors";
+// app/(tabs)/_layout.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { ThemeProvider, useTheme } from "../../contexts/ThemeContexts";
+import { ThemeToggle } from "../../components/ThemeToggle";
+import { Colors } from "../../constants/Colors";
+import { useTheme } from "../../contexts/ThemeContext";
 
-function TabsContent() {
+export default function TabLayout() {
   const { isDarkMode } = useTheme();
   const colors = isDarkMode ? Colors.dark : Colors.light;
 
@@ -14,7 +15,7 @@ function TabsContent() {
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
         headerRight: () => <ThemeToggle />,
-        tabBarStyle: { 
+        tabBarStyle: {
           backgroundColor: colors.background,
           borderTopColor: colors.border,
         },
@@ -32,11 +33,38 @@ function TabsContent() {
         }}
       />
       <Tabs.Screen
+        name="vehiculos"
+        options={{
+          title: "Vehículos",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="car" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="rutas"
         options={{
-          title: "Rutas",
+          title: "Lista de Rutas",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="map" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="creador"
+        options={{
+          title: "Crear Ruta",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="analytics" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="recorridos"
+        options={{
+          title: "Recorridos",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="git-compare" color={color} size={size} />
           ),
         }}
       />
@@ -50,13 +78,5 @@ function TabsContent() {
         }}
       />
     </Tabs>
-  );
-}
-
-export default function TabLayout() {
-  return (
-    <ThemeProvider>
-      <TabsContent />
-    </ThemeProvider>
   );
 }

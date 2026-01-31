@@ -9,14 +9,31 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Esta app necesita acceso a la ubicación para mostrar tu posición en el mapa de rutas del camión de la basura.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Esta app necesita acceso a la ubicación para rastrear las rutas del camión de la basura."
+      },
+      "config": {
+        "googleMapsApiKey": "TU_API_KEY_AQUI"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "TU_API_KEY_AQUI"
+        }
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.transporteapp"
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +54,12 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3c293355-7407-48b7-bb52-3032a08b523b"
+      }
+    },
+    "owner": "jameva"
   }
 }

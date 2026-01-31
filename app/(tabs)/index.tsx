@@ -1,33 +1,28 @@
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { StyleSheet } from "react-native";
+import React from "react";
+import { StatusBar, StyleSheet, View } from "react-native";
+import MapLibreMap from "../../components/MapLibreMap";
+import { Colors } from "../../constants/Colors";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export default function Index() {
+  const { isDarkMode } = useTheme();
+  const colors = isDarkMode ? Colors.dark : Colors.light;
+
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.titulo}>Inicio</ThemedText>
-      <ThemedText style={styles.texto}>Bienvenido (a)</ThemedText>
-      <ThemedText style={styles.texto}>
-        En esta App podrás ver el recorrido del camión de la basura
-      </ThemedText>
-    </ThemedView>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#2E86AB" />
+
+      {/* EL MAPA DEBE IR DIRECTAMENTE EN UN VIEW CON FLEX 1 */}
+      
+
+      <MapLibreMap/>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  titulo: {
-    marginBottom: 20,
-  },
-  texto: {
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 10,
-    lineHeight: 22,
+    flex: 1,     // ✔ ocupa toda la pantalla
+    padding: 0,  // ❗ quitar padding para que el mapa aparezca
   },
 });
